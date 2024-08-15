@@ -29,3 +29,35 @@ export const ChordSchema = z.string()
 export type Chord = z.infer<typeof ChordSchema>;
 
 
+export const LwjTableCellSchema = z.object({
+    value: z.string(),
+});
+export type LwjTableCell = z.infer<typeof LwjTableCellSchema>;
+
+export const LwjTableColumnSchema = z.object({
+    header: z.string(),
+    width: z.number(),
+    cells: z.array(
+        z.union([
+            LwjTableCellSchema,
+            z.undefined(),
+            z.null(),
+        ]),
+    ),
+});
+export type LwjTableColumn = z.infer<typeof LwjTableColumnSchema>;
+
+
+export const LwjTableDataSchema = z.object({
+    chordProgressionIndex: z.number(),
+    scaleIndex: z.number(),
+    convertedIndex: z.number(),
+    columns: z.array(
+        z.union([
+            LwjTableColumnSchema,
+            z.undefined(),
+            z.null(),
+        ]),
+    ),
+});
+export type LwjTableData = z.infer<typeof LwjTableDataSchema>;

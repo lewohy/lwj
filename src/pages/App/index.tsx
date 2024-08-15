@@ -1,88 +1,307 @@
+import { LwjTableColumn, LwjTableData, LwjTableDataSchema } from '@/common/schema/model';
+import { load, save } from '@/src/repository';
 import { convert } from '@/src/utils';
-import { Box, Container, TextField } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { Box, Container, Grow, Radio, TextField } from '@mui/material';
+import { useCallback, useMemo, useState } from 'react';
+
+const initialTableData: LwjTableData = {
+    chordProgressionIndex: 0,
+    scaleIndex: 1,
+    convertedIndex: 2,
+    columns: [
+        {
+            header: 'Chord Progression',
+            width: 128,
+            cells: [
+                {
+                    value: '',
+                },
+            ],
+        },
+        {
+            header: 'Scale',
+            width: 128,
+            cells: [
+                {
+                    value: '',
+                },
+            ],
+        },
+        {
+            header: 'Converted',
+            width: 128,
+            cells: [
+                {
+                    value: '',
+                },
+            ],
+        },
+    ],
+};
+
+class LwjTable {
+    private tableData: LwjTableData;
+
+    public get width() {
+        return this.tableData.columns.length;
+    }
+
+    public get height() {
+        return this.tableData.columns.reduce((acc, column) => {
+            return Math.max(acc, column?.cells?.length ?? 0);
+        }, 0);
+    }
+
+    constructor(tableData: LwjTableData) {
+        this.tableData = tableData;
+    }
+
+    public getColumn(x: number) {
+        return this.tableData.columns[x];
+    }
+}
 
 const App = () => {
-    const [keyProgression, setKeyProgression] = useState(
-        `C D E F G A B\n` +
-        `F G A Bb C D E\n` +
-        `Bb C D Eb F G A\n` +
-        `Eb F G Ab Bb C D\n` +
-        `Ab Bb C Db Eb F G\n` +
-        `Db Eb F Gb Ab Bb C\n` +
-        `Gb Ab Bb B Db Eb F\n` +
-        `B Db Eb E Gb Ab Bb\n` +
-        `E Gb Ab A B Db Eb\n` +
-        `A B Db D E Gb Ab\n` +
-        `D E Gb G A B Db\n` +
-        `G A B C D E Gb`,
-    );
-    const [keyScale, setKeyScale] = useState('C');
-    const [converted, setConverted] = useState('');
+    const [tableData, setTableData] =
+        useState<LwjTableData>(() => {
+            const saved = load('table');
+            console.log(saved);
 
-    useEffect(() => {
-        const lines = keyProgression.split('\n');
-        const list = lines.map((line) => line.split(' '));
+            if (saved === null) {
+                console.log('No saved data found. Using initial data.');
 
-        try {
-            const result: string[] = [];
-
-            for (const chords of list) {
-                result.push(convert(chords, keyScale).join(' '));
+                return initialTableData;
             }
 
-            setConverted(result.join('\n'));
-        } catch (e) {
-            console.log(e);
-        }
-    }, [keyProgression, keyScale]);
+            const json = JSON.parse(saved);
+            console.log(json);
 
+            // TODO: 예외 처리
+            const parsed = LwjTableDataSchema.safeParse(json);
+
+            if (!parsed.success) {
+                console.log('Failed to parse saved data. Using initial data.');
+
+                return initialTableData;
+            }
+
+            return parsed.data;
+        });
+
+    const table = useMemo(() => {
+        const json = JSON.stringify(tableData);
+        save('table', json);
+        console.log('Saved table data.');
+
+        const newTable = new LwjTable(tableData);
+
+        if (newTable.width < 3 || newTable.height < 1) {
+            console.log('Table is too small. Using initial data.');
+            save(`table-${Date.now()}`, JSON.stringify(initialTableData));
+            console.log('Backup created.');
+
+            return new LwjTable(initialTableData);
+        }
+
+        const maxColumnLength = Math.max(
+            tableData.chordProgressionIndex,
+            tableData.scaleIndex,
+            tableData.convertedIndex,
+        );
+
+        if (tableData.columns[maxColumnLength] === undefined ||
+            tableData.columns[maxColumnLength] === null) {
+            tableData.columns[maxColumnLength] = createColumn(table.height);
+
+            return new LwjTable(tableData);
+        }
+
+        return newTable;
+    }, [tableData]);
+
+    const createColumn = (height: number): LwjTableColumn => {
+        return {
+            header: '',
+            width: 128,
+            cells: Array.from({
+                length: height,
+            }).map(() => ({
+                value: '',
+            })),
+        };
+    };
+
+    const handleHeaderChange = useCallback((
+        x: number,
+        value: string,
+    ) => {
+        const newTableData: LwjTableData = {
+            ...tableData,
+        };
+
+        if (newTableData.columns[x] === undefined ||
+            newTableData.columns[x] === null) {
+            newTableData.columns[x] = createColumn(table.height);
+        }
+
+        newTableData.columns[x].header = value;
+
+        setTableData(newTableData);
+    }, [tableData, setTableData]);
+
+    const handleCellChange = useCallback((
+        x: number,
+        y: number,
+        value: string,
+    ) => {
+        const newTableData: LwjTableData = {
+            ...tableData,
+        };
+
+
+        if (newTableData.columns[x] === undefined ||
+            newTableData.columns[x] === null) {
+            newTableData.columns[x] = createColumn(table.height);
+        }
+
+        if (newTableData.columns[x].cells[y] === undefined ||
+            newTableData.columns[x].cells[y] === null
+        ) {
+            newTableData.columns.forEach((column) => {
+                if (column) {
+                    column.cells[y] = {
+                        value: '',
+                    };
+                }
+            });
+
+            newTableData.columns[x].cells[y] = {
+                value: '',
+            };
+        }
+
+        const cell = newTableData.columns[x].cells[y];
+
+        cell.value = value;
+
+        const convertedCell = newTableData.columns[tableData.convertedIndex]
+            ?.cells[y];
+        const chordProgressionCell = newTableData
+            .columns[tableData.chordProgressionIndex]
+            ?.cells[y];
+        const scaleCell = newTableData.columns[tableData.scaleIndex]
+            ?.cells[y];
+
+        if (chordProgressionCell && scaleCell && convertedCell) {
+            try {
+                convertedCell.value = convert(
+                    chordProgressionCell.value.split(' '),
+                    scaleCell.value,
+                ).join('-');
+            } catch (e) {
+                console.log(e);
+            }
+        }
+
+        setTableData(newTableData);
+    }, [tableData, setTableData]);
 
     return (
         <Container
             sx={{
                 height: '100vh',
+                overflow: 'auto',
             }}
             maxWidth="lg">
-
             <Box
+                sx={{
+                    padding: '16px',
+                }}
                 display={'flex'}
-                justifyContent={'center'}
-                alignItems={'center'}
-                width={'100%'}
-                height={'100%'}
                 flexDirection={'row'}
-                gap={4}>
+                gap={2} >
+                {Array.from({
+                    length: table.width + 1,
+                }).map((_, x) => (
+                    <Box
+                        key={x}
+                        width={table.getColumn(x)?.width ?? 128}
+                        display={'flex'}
+                        flexDirection={'column'}
+                        gap={2}>
 
-                <TextField
-                    sx={{
-                        flex: 1,
-                    }}
-                    value={keyProgression}
-                    onChange={(e) => setKeyProgression(e.target.value)}
-                    label={'Chord Progression'}
-                    variant={'outlined'}
-                    multiline />
+                        <TextField
+                            value={table.getColumn(x)?.header ?? ''}
+                            size="small"
+                            onChange={(e) => {
+                                handleHeaderChange(
+                                    x,
+                                    e.target.value,
+                                );
+                            }}
+                            fullWidth/>
 
-                <TextField
-                    value={keyScale}
-                    onChange={(e) => setKeyScale(e.target.value)}
-                    label={'Scale'}
-                    variant={'outlined'} />
+                        <Box
+                            display={'flex'}
+                            flexDirection={'row'}
+                            justifyContent={'center'}
+                            gap={1} >
+                            <Radio
+                                size="small"
+                                checked={tableData.chordProgressionIndex === x}
+                                color="primary"
+                                onChange={() => {
+                                    setTableData({
+                                        ...tableData,
+                                        chordProgressionIndex: x,
+                                    });
+                                }}/>
 
-                <TextField
-                    sx={{
-                        flex: 1,
-                    }}
-                    InputProps={{
-                        sx: {
-                            fontFamily: 'Noto Sans Indic Siyaq Numbers',
-                        },
-                    }}
-                    value={converted}
-                    label={'Converted'}
-                    variant={'outlined'}
-                    multiline />
+                            <Radio
+                                size="small"
+                                checked={tableData.scaleIndex === x}
+                                color="secondary"
+                                onChange={() => {
+                                    setTableData({
+                                        ...tableData,
+                                        scaleIndex: x,
+                                    });
+                                }}/>
+                            <Radio
+                                size="small"
+                                checked={tableData.convertedIndex === x}
+                                color="success"
+                                onChange={() => {
+                                    setTableData({
+                                        ...tableData,
+                                        convertedIndex: x,
+                                    });
+                                }}/>
+                        </Box>
+                        {Array.from({
+                            length: table.height + 1,
+                        }).map((_, y) => (
+                            <Grow
+                                in={true}>
+                                <Box
+                                    key={y} >
+                                    <TextField
+                                        value={table.getColumn(x)?.cells[y]?.value ?? ''}
+                                        size="small"
+                                        onChange={(e) => {
+                                            handleCellChange(
+                                                x,
+                                                y,
+                                                e.target.value,
+                                            );
+                                        }}
+                                        autoComplete="off"
+                                        fullWidth />
+                                </Box>
+                            </Grow>
+                        ))}
+                    </Box>
+                ))}
             </Box>
         </Container>
     );
