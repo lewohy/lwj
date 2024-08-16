@@ -1,14 +1,23 @@
 import { LwjTableColumn, LwjTableData, LwjTableDataSchema } from '@/common/schema/model';
 import { load, save } from '@/src/repository';
 import { convert } from '@/src/utils';
-import { Box, Container, Grow, Radio, TextField } from '@mui/material';
+import { Box, Container, Grow, Paper, Radio, TextField } from '@mui/material';
 import { useCallback, useMemo, useState } from 'react';
 
 const initialTableData: LwjTableData = {
-    chordProgressionIndex: 0,
-    scaleIndex: 1,
-    convertedIndex: 2,
+    chordProgressionIndex: 1,
+    scaleIndex: 2,
+    convertedIndex: 3,
     columns: [
+        {
+            header: 'Title',
+            width: 256,
+            cells: [
+                {
+                    value: '',
+                },
+            ],
+        },
         {
             header: 'Chord Progression',
             width: 128,
@@ -199,7 +208,7 @@ const App = () => {
                     scaleCell.value,
                 ).join('-');
             } catch (e) {
-                console.log(e);
+                // console.log(e);
             }
         }
 
@@ -210,16 +219,19 @@ const App = () => {
         <Container
             sx={{
                 height: '100vh',
-                overflow: 'auto',
             }}
             maxWidth="lg">
             <Box
                 sx={{
                     padding: '16px',
+                    maxHeight: '100%',
+                    overflow: 'auto',
+                    boxSizing: 'border-box',
                 }}
                 display={'flex'}
                 flexDirection={'row'}
-                gap={2} >
+                gap={2}
+                component={Paper} >
                 {Array.from({
                     length: table.width + 1,
                 }).map((_, x) => (
@@ -282,9 +294,9 @@ const App = () => {
                             length: table.height + 1,
                         }).map((_, y) => (
                             <Grow
+                                key={y}
                                 in={true}>
-                                <Box
-                                    key={y} >
+                                <Box>
                                     <TextField
                                         value={table.getColumn(x)?.cells[y]?.value ?? ''}
                                         size="small"
