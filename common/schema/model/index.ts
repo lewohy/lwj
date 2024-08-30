@@ -2,7 +2,15 @@ import { z } from 'zod';
 
 const chordNotationRegex = /([A-G])([#|b]*)(.*)/;
 
-export const NoteSchema = z.union([z.literal('A'), z.literal('B'), z.literal('C'), z.literal('D'), z.literal('E'), z.literal('F'), z.literal('G')]);
+export const NoteSchema = z.union([
+    z.literal('A'),
+    z.literal('B'),
+    z.literal('C'),
+    z.literal('D'),
+    z.literal('E'),
+    z.literal('F'),
+    z.literal('G'),
+]);
 export type Note = z.infer<typeof NoteSchema>;
 
 export const ChordSchema = z.string()
@@ -21,8 +29,17 @@ export const ChordSchema = z.string()
         }
 
         return {
+            /**
+             * 알파벳
+             */
             note: noteData.data,
+            /**
+             * 뒤에 붙는 #, b
+             */
             modifier: notationData[2],
+            /**
+             * 그 뒤에 붙는 문자열
+             */
             suffix: notationData[3],
         };
     });

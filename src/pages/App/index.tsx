@@ -207,7 +207,7 @@ const App = () => {
                     chordProgressionCell.value.split(' '),
                     scaleCell.value,
                 ).join('-');
-            } catch (e) {
+            } catch (_e) {
                 // console.log(e);
             }
         }
