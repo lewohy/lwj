@@ -105,6 +105,6 @@ export function convert(chordNotations: string[], keyScale: string): string[] {
             table1.indexOf(value) - table1.indexOf(keyValue) + table1.length
         ) % table1.length;
 
-        return table3[tmp];
+        return table3[tmp] + chord.suffix;
     });
 }
